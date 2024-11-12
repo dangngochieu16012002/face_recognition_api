@@ -8,12 +8,12 @@ import os
 from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # Bật CORS cho toàn bộ ứng dụng để cho phép các yêu cầu từ trang web của bạn
 
-# Thư mục chứa ảnh mẫu của nhân viên
+# Đường dẫn thư mục chứa ảnh mẫu của nhân viên
 EMPLOYEE_DIR = "./employees/"
 
-# Kết nối đến cơ sở dữ liệu MySQL
+# Hàm kết nối đến cơ sở dữ liệu MySQL
 def connect_db():
     try:
         return mysql.connector.connect(
@@ -26,7 +26,7 @@ def connect_db():
         print(f"Lỗi kết nối CSDL: {err}")
         return None
 
-# Tải khuôn mặt của nhân viên
+# Hàm tải các khuôn mặt của nhân viên từ thư mục
 def load_employee_faces():
     employee_faces = []
     employee_names = []
@@ -43,16 +43,27 @@ def load_employee_faces():
                         employee_names.append(folder)
     return employee_faces, employee_names
 
+# Tải các khuôn mặt khi khởi động ứng dụng
 employee_faces, employee_names = load_employee_faces()
 
-# Route để nhận diện khuôn mặt
+# Endpoint kiểm tra kết nối đến cơ sở dữ liệu
+@app.route('/test-db-connection', methods=['GET'])
+def test_db_connection():
+    conn = connect_db()
+    if conn is None:
+        return jsonify({"status": "error", "message": "Không thể kết nối đến cơ sở dữ liệu"}), 500
+    else:
+        conn.close()
+        return jsonify({"status": "success", "message": "Kết nối đến cơ sở dữ liệu thành công!"}), 200
+
+# Endpoint để nhận diện khuôn mặt và chấm công
 @app.route('/recognize', methods=['POST'])
 def recognize():
     data = request.json
     image_data = base64.b64decode(data['image'])
     attendance_type = data['type']
     
-    # Giải mã hình ảnh
+    # Giải mã hình ảnh từ base64
     np_image = np.frombuffer(image_data, np.uint8)
     img = face_recognition.load_image_file(np_image)
 
@@ -65,10 +76,10 @@ def recognize():
             match_index = matches.index(True)
             employee_name = employee_names[match_index]
 
-            # Kết nối và lưu dữ liệu chấm công vào bảng `attendance_logs`
+            # Lưu dữ liệu chấm công vào bảng `attendance_logs`
             conn = connect_db()
             if conn is None:
-                return jsonify({"status": "error", "message": "Không thể kết nối đến cơ sở dữ liệu."}), 500
+                return jsonify({"status": "error", "message": "Không thể kết nối đến cơ sở dữ liệu"}), 500
 
             cursor = conn.cursor()
             cursor.execute(
@@ -82,7 +93,7 @@ def recognize():
 
     return jsonify({"status": "fail", "message": "Không tìm thấy khuôn mặt hoặc không khớp với nhân viên nào."}), 404
 
-# Route để thêm nhân viên
+# Endpoint để thêm nhân viên mới
 @app.route('/add-employee', methods=['POST'])
 def add_employee():
     data = request.json
@@ -99,10 +110,10 @@ def add_employee():
         with open(os.path.join(folder_path, f"{name}_{employee_id}_{i+1}.jpg"), "wb") as f:
             f.write(img_data)
 
-    # Kết nối và lưu dữ liệu nhân viên vào bảng `employees`
+    # Lưu dữ liệu nhân viên vào bảng `employees`
     conn = connect_db()
     if conn is None:
-        return jsonify({"status": "error", "message": "Không thể kết nối đến cơ sở dữ liệu."}), 500
+        return jsonify({"status": "error", "message": "Không thể kết nối đến cơ sở dữ liệu"}), 500
 
     cursor = conn.cursor()
     cursor.execute(
