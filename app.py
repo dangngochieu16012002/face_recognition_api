@@ -15,12 +15,16 @@ EMPLOYEE_DIR = "./employees/"
 
 # Kết nối đến cơ sở dữ liệu MySQL
 def connect_db():
-    return mysql.connector.connect(
-        host="sql312.infinityfree.com",
-        user="if0_37577660",
-        password="Hieu16012002",
-        database="if0_37577660_membershiphp"
-    )
+    try:
+        return mysql.connector.connect(
+            host="sql312.infinityfree.com",
+            user="if0_37577660",
+            password="Hieu16012002",
+            database="if0_37577660_membershiphp"
+        )
+    except mysql.connector.Error as err:
+        print(f"Lỗi kết nối CSDL: {err}")
+        return None
 
 # Tải khuôn mặt của nhân viên
 def load_employee_faces():
@@ -47,9 +51,12 @@ def recognize():
     data = request.json
     image_data = base64.b64decode(data['image'])
     attendance_type = data['type']
+    
+    # Giải mã hình ảnh
     np_image = np.frombuffer(image_data, np.uint8)
     img = face_recognition.load_image_file(np_image)
 
+    # Nhận diện khuôn mặt trong ảnh
     face_encodings = face_recognition.face_encodings(img)
     if face_encodings:
         face_encoding = face_encodings[0]
@@ -58,8 +65,11 @@ def recognize():
             match_index = matches.index(True)
             employee_name = employee_names[match_index]
 
-            # Lưu dữ liệu chấm công vào bảng `attendance_logs`
+            # Kết nối và lưu dữ liệu chấm công vào bảng `attendance_logs`
             conn = connect_db()
+            if conn is None:
+                return jsonify({"status": "error", "message": "Không thể kết nối đến cơ sở dữ liệu."}), 500
+
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO attendance_logs (employee_name, attendance_type, timestamp) VALUES (%s, %s, %s)",
@@ -89,8 +99,11 @@ def add_employee():
         with open(os.path.join(folder_path, f"{name}_{employee_id}_{i+1}.jpg"), "wb") as f:
             f.write(img_data)
 
-    # Lưu dữ liệu nhân viên vào bảng `employees`
+    # Kết nối và lưu dữ liệu nhân viên vào bảng `employees`
     conn = connect_db()
+    if conn is None:
+        return jsonify({"status": "error", "message": "Không thể kết nối đến cơ sở dữ liệu."}), 500
+
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO employees (name, employee_id) VALUES (%s, %s)",
