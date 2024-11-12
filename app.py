@@ -126,4 +126,5 @@ def add_employee():
     return jsonify({"status": "success", "message": f"Nhân viên {name} đã được thêm thành công!"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get("PORT", 5000))  # Sử dụng biến PORT do Render cung cấp hoặc mặc định là 5000
+    app.run(host='0.0.0.0', port=port)
